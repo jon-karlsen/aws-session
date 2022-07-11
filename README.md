@@ -1,6 +1,6 @@
 # aws-session
 
-Simple bash script to simplify authenticating with the AWS CLI using MFA, as well as switching roles. Usage is simple:
+Simple shell script to simplify authenticating with the AWS CLI using MFA, as well as switching roles. Usage is simple:
 
 ```
 $ source <PATH>/aws_session --token="<YOUR_MFA_TOKEN>"
