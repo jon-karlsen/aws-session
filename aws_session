@@ -22,7 +22,7 @@
 err() {
   echo ""
   echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
-  exit 1
+  return 1
 }
 
 
@@ -176,5 +176,7 @@ else
     echo "AWS_SECRET_ACCESS_KEYi: " $AWS_SECRET_ACCESS_KEY
     echo "AWS_SESSION_TOKEN: " $AWS_SESSION_TOKEN
     echo ""
+
+    return 0
 fi
 
