@@ -1,4 +1,4 @@
-#! /usr/bin/bash
+#! /usr/bin/zsh
 
 # Simplif authorising with MFA and assuming a role using the AWS CLI.
 #
@@ -60,7 +60,7 @@ for i in "$@"; do
     esac
 done
 
-if [ ${#token} == 0 ]; then 
+if [ ${#token} = 0 ]; then 
     err "Failed to parse a value for the required 'token' option"
 else
     prep
@@ -71,20 +71,20 @@ else
     echo "Attempting to read credentials from $cred_file ..."
 
     while IFS=' = ' read key value; do
-        if [[ $key == \[*] ]]; then
+        if [[ $key = \[*] ]]; then
             section=$key
         elif [[ $value ]] && [[ $section = '[default]' ]]; then
-            if [[ $key == 'aws_access_key_id' ]]; then
+            if [[ $key = 'aws_access_key_id' ]]; then
                 aws_access_key_id=$value
-            elif [[ $key == 'aws_secret_access_key' ]]; then
+            elif [[ $key = 'aws_secret_access_key' ]]; then
                 aws_secret_access_key=$value
-            elif [[ $key == 'mfa_serial' ]]; then
+            elif [[ $key = 'mfa_serial' ]]; then
                 mfa_serial=$value
             fi
         elif [[ $value ]] && [[ $section = '[mfa]' ]]; then
-            if [[ $key == 'role_arn' ]]; then
+            if [[ $key = 'role_arn' ]]; then
                 aws_role_arn=$value
-            elif [[ $key == 'role_session_name' ]]; then
+            elif [[ $key = 'role_session_name' ]]; then
                 aws_role_session_name=$value
             fi
         fi
@@ -92,15 +92,15 @@ else
 
     echo "...done."
 
-    if [ ${#aws_access_key_id} == 0 ];       then
+    if [ ${#aws_access_key_id} = 0 ];       then
         err "Failed to read a value for the required 'aws_access_key_id' configuration option"
-    elif [ ${#aws_secret_access_key} == 0 ]; then
+    elif [ ${#aws_secret_access_key} = 0 ]; then
         err "Failed to read a value for the required 'aws_secret_access_key' configuraton option"
-    elif [ ${#mfa_serial} == 0 ];            then
+    elif [ ${#mfa_serial} = 0 ];            then
         err "Failed to read a value for the required 'mfa_serial' configuration option"
-    elif [ ${#aws_role_arn} == 0 ];          then
+    elif [ ${#aws_role_arn} = 0 ];          then
         err "Failed to read a value for the required 'role_arn' configuration option"
-    elif [ ${#aws_role_session_name} == 0 ]; then
+    elif [ ${#aws_role_session_name} = 0 ]; then
         err "Failed to read a value for the required 'role_session_name' configuration option"
     fi
 
@@ -122,11 +122,11 @@ else
     aws_secret_access_key=$( cat "/tmp/session_token.json" | jq -r '.Credentials.SecretAccessKey' )
     aws_session_token=$( cat "/tmp/session_token.json" | jq -r '.Credentials.SessionToken' )
 
-    if [ ${#aws_access_key_id} == 0 ]; then
+    if [ ${#aws_access_key_id} = 0 ]; then
         err "Failed to read a value for the required 'AccessKeyId' field"
-    elif [ ${#aws_secret_access_key} == 0 ]; then
+    elif [ ${#aws_secret_access_key} = 0 ]; then
         err "Failed to read a value for the required 'SecretAccessKey' field"
-    elif [ ${#aws_session_token} == 0 ]; then
+    elif [ ${#aws_session_token} = 0 ]; then
         err "Failed to read a value for the required 'SessionToken' field"
     else 
         export AWS_ACCESS_KEY_ID=$aws_access_key_id
@@ -154,11 +154,11 @@ else
     aws_secret_access_key=$( cat "/tmp/assume_role.json" | jq -r '.Credentials.SecretAccessKey' )
     aws_session_token=$( cat "/tmp/assume_role.json" | jq -r '.Credentials.SessionToken' )
 
-    if [ ${#aws_access_key_id} == 0 ]; then
+    if [ ${#aws_access_key_id} = 0 ]; then
         err "Failed to read a value for the required 'AccessKeyId' field"
-    elif [ ${#aws_secret_access_key} == 0 ]; then
+    elif [ ${#aws_secret_access_key} = 0 ]; then
         err "Failed to read a value for the required 'SecretAccessKey' field"
-    elif [ ${#aws_session_token} == 0 ]; then
+    elif [ ${#aws_session_token} = 0 ]; then
         err "Failed to read a value for the required 'SessionToken' field"
     else 
         export AWS_ACCESS_KEY_ID=$aws_access_key_id
@@ -169,4 +169,12 @@ else
     fi
 
     echo "...done"
+
+    echo ""
+    echo "Successfully authenticated."
+    echo "AWS_ACCESS_KEY_ID: " $AWS_ACCESS_KEY_ID
+    echo "AWS_SECRET_ACCESS_KEYi: " $AWS_SECRET_ACCESS_KEY
+    echo "AWS_SESSION_TOKEN: " $AWS_SESSION_TOKEN
+    echo ""
 fi
+
