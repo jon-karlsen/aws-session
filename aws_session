@@ -111,6 +111,7 @@ else
         --serial-number $mfa_serial \
         --token-code $token \
         --output json \
+        --duration-seconds 14400 \
         > /tmp/session_token.json
 
     echo "...done."
@@ -173,7 +174,7 @@ else
     echo ""
     echo "Successfully authenticated."
     echo "AWS_ACCESS_KEY_ID: " $AWS_ACCESS_KEY_ID
-    echo "AWS_SECRET_ACCESS_KEYi: " $AWS_SECRET_ACCESS_KEY
+    echo "AWS_SECRET_ACCESS_KEY: " $AWS_SECRET_ACCESS_KEY
     echo "AWS_SESSION_TOKEN: " $AWS_SESSION_TOKEN
     echo ""
 
