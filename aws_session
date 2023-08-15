@@ -1,25 +1,28 @@
 #! /usr/bin/zsh
 
-# Simplif authorising with MFA and assuming a role using the AWS CLI.
+# Simplify authorising with MFA and assuming a role using the AWS CLI.
 #
 # Required parameters:
-#   - token: MFA token
+#   --token | -t: MFA token
+#
+# Optional parameters:
+#   --echo-vars | -e: If supplied, the script will echo the values of the AWS env variables after they have been set.
 #
 # Author: Jon Karlsen (jon.karlsen@azets.com), 08 July 2022 
 
 
 #######################################
-# Print the date, time, and a supplied
-# error message to STDOUT, then exit with
-# status 1.
-# Globals:
-#   None
-# Arguments:
-#   None
-# Outputs:
-#   None
+#   Print the date, time, and a supplied
+#   error message to STDOUT, then exit with
+#   status 1.
+#   Globals:
+#     None
+#   Arguments:
+#     None
+#   Outputs:
+#     None
 #######################################
-err() {
+function err {
   echo ""
   echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
   return 1
@@ -27,16 +30,16 @@ err() {
 
 
 #######################################
-# Unset AWS env variables to start auth 
-# with a clean slate. 
-# Globals:
-#   None
-# Arguments:
-#   None
-# Outputs:
-#   None
+#   Unset AWS env variables to start auth 
+#   with a clean slate. 
+#   Globals:
+#       None
+#   Arguments:
+#       None
+#   Outputs:
+#       None
 #######################################
-prep() {
+function prep {
     echo "Cleaning up env variables..."
 
     unset AWS_ACCESS_KEY_ID
@@ -46,70 +49,103 @@ prep() {
     echo "...done."
 }
 
-token=""
 
-for i in "$@"; do
-    case $i in
-        -t=*|--token=*)
-            token="${i#*=}"
-            shift
-            ;;
-        -*|--*)
-            err "Unknown option $i"
-            ;;
-    esac
-done
-
-if [ ${#token} = 0 ]; then 
-    err "Failed to parse a value for the required 'token' option"
-else
-    prep
-
-    cred_file=~/.aws/credentials
+#######################################
+#   Read credentials from config file.
+#   Globals:
+#       None
+#   Arguments:
+#       None
+#   Outputs:
+#       None
+#######################################
+function read_credentials {
+    readonly __cred_file=${1:?"The path to the credentials file is required"}
 
     echo ""
-    echo "Attempting to read credentials from $cred_file ..."
+    echo "Attempting to read credentials from $__cred_file..."
 
     while IFS=' = ' read key value; do
         if [[ $key = \[*] ]]; then
             section=$key
         elif [[ $value ]] && [[ $section = '[default]' ]]; then
-            if [[ $key = 'aws_access_key_id' ]]; then
+            if [[ $key = 'aws_access_key_id' ]];       then
                 aws_access_key_id=$value
             elif [[ $key = 'aws_secret_access_key' ]]; then
                 aws_secret_access_key=$value
-            elif [[ $key = 'mfa_serial' ]]; then
+            elif [[ $key = 'mfa_serial' ]];            then
                 mfa_serial=$value
             fi
-        elif [[ $value ]] && [[ $section = '[mfa]' ]]; then
-            if [[ $key = 'role_arn' ]]; then
-                aws_role_arn=$value
-            elif [[ $key = 'role_session_name' ]]; then
-                aws_role_session_name=$value
-            fi
         fi
-    done < $cred_file
+    done < $__cred_file
 
     echo "...done."
+}
 
-    if [ ${#aws_access_key_id} = 0 ];       then
+
+#######################################
+#   Read credentials from config file.
+#   Globals:
+#       aws_access_key_id
+#       aws_secret_access_key
+#       mfa_serial
+#       aws_role_arn
+#       aws_role_session_name
+#   Arguments:
+#       None
+#   Outputs:
+#       None
+#######################################
+function verify_credentials {
+    if   [ ${#aws_access_key_id} = 0 ];     then
         err "Failed to read a value for the required 'aws_access_key_id' configuration option"
     elif [ ${#aws_secret_access_key} = 0 ]; then
         err "Failed to read a value for the required 'aws_secret_access_key' configuraton option"
     elif [ ${#mfa_serial} = 0 ];            then
         err "Failed to read a value for the required 'mfa_serial' configuration option"
-    elif [ ${#aws_role_arn} = 0 ];          then
-        err "Failed to read a value for the required 'role_arn' configuration option"
-    elif [ ${#aws_role_session_name} = 0 ]; then
-        err "Failed to read a value for the required 'role_session_name' configuration option"
     fi
+}
 
+
+    token=""
+echo_vars=false
+conf_file="~/.aws/credentials"
+
+
+for i in "$@"; do
+    case $i in
+        -t=* | --token=* )
+            token="${i#*=}"
+            shift
+            ;;
+        -e=* | --echo-vars=* )
+            if [ "${i#*=}" = "true" ]; then
+                echo_vars=true
+            fi
+            shift
+            ;;
+        -* |--* )
+            err "Unknown option $i"
+            ;;
+    esac
+done
+
+
+if [ ${#token} = 0 ]; then 
+    err "Failed to parse a value for the required 'token' option"
+else
+    echo ""
+
+    prep
+    read_credentials ~/.aws/credentials
+    verify_credentials
+    
     echo ""
     echo "Attempting to get a session token..."
 
     aws sts get-session-token \
-        --serial-number $mfa_serial \
-        --token-code $token \
+        --serial-number "$mfa_serial" \
+        --token-code "$token" \
         --output json \
         --duration-seconds 14400 \
         > /tmp/session_token.json
@@ -119,65 +155,67 @@ else
     echo ""
     echo "Attempting to read the session token response..."
 
-    aws_access_key_id=$( cat "/tmp/session_token.json" | jq -r '.Credentials.AccessKeyId' )
+        aws_access_key_id=$( cat "/tmp/session_token.json" | jq -r '.Credentials.AccessKeyId' )
     aws_secret_access_key=$( cat "/tmp/session_token.json" | jq -r '.Credentials.SecretAccessKey' )
-    aws_session_token=$( cat "/tmp/session_token.json" | jq -r '.Credentials.SessionToken' )
+        aws_session_token=$( cat "/tmp/session_token.json" | jq -r '.Credentials.SessionToken' )
 
-    if [ ${#aws_access_key_id} = 0 ]; then
+    if [ ${#aws_access_key_id} = 0 ];       then
         err "Failed to read a value for the required 'AccessKeyId' field"
     elif [ ${#aws_secret_access_key} = 0 ]; then
         err "Failed to read a value for the required 'SecretAccessKey' field"
-    elif [ ${#aws_session_token} = 0 ]; then
+    elif [ ${#aws_session_token} = 0 ];     then
         err "Failed to read a value for the required 'SessionToken' field"
     else 
-        export AWS_ACCESS_KEY_ID=$aws_access_key_id
-        export AWS_SECRET_ACCESS_KEY=$aws_secret_access_key
-        export AWS_SESSION_TOKEN=$aws_session_token
+          tmp_file=$(mktemp)
+        in_section=""
 
-        aws_access_key_id=""
+        while read -r line;
+        do
+            if [[ "$line" =~ (\[[a-z]+\]) ]]; then
+                if [[ "${match[1]}" == "[mfa]" ]]; then 
+                    in_section="1"
+                else 
+                    in_section=""
+                fi
+            fi
+
+            if [[ "$in_section" == "1" ]];
+            then 
+                if [[ "$line" =~ ^aws_access_key_id ]]; then 
+                    line="aws_access_key_id = $aws_access_key_id"
+                fi
+
+                if [[ "$line" =~ ^aws_secret_access_key ]]; then 
+                    line="aws_secret_access_key = $aws_secret_access_key"
+                fi
+
+                if [[ "$line" =~ ^aws_session_token ]]; then 
+                    line="aws_session_token = $aws_session_token"
+                fi
+            fi
+
+            echo "$line" >> "$tmp_file"
+
+        done < ~/.aws/credentials
+
+        mv "$tmp_file" ~/.aws/credentials
+
+        if [ "$echo_vars" = true ]; then
+            echo "AWS_ACCESS_KEY_ID: "     $aws_access_key_id
+            echo "AWS_SECRET_ACCESS_KEY: " $aws_secret_access_key
+            echo "AWS_SESSION_TOKEN: "     $aws_session_token
+            echo ""
+        fi
+
+            aws_access_key_id=""
         aws_secret_access_key=""
-        aws_session_token=""
+            aws_session_token=""
 
         rm /tmp/session_token.json
     fi
 
     echo "...done."
-    
-    echo ""
-    echo "Attempting to change roles..."
-
-    aws sts assume-role \
-        --role-arn ${aws_role_arn} \
-        --role-session-name ${aws_role_session_name} \
-        > /tmp/assume_role.json
-
-    aws_access_key_id=$( cat "/tmp/assume_role.json" | jq -r '.Credentials.AccessKeyId' )
-    aws_secret_access_key=$( cat "/tmp/assume_role.json" | jq -r '.Credentials.SecretAccessKey' )
-    aws_session_token=$( cat "/tmp/assume_role.json" | jq -r '.Credentials.SessionToken' )
-
-    if [ ${#aws_access_key_id} = 0 ]; then
-        err "Failed to read a value for the required 'AccessKeyId' field"
-    elif [ ${#aws_secret_access_key} = 0 ]; then
-        err "Failed to read a value for the required 'SecretAccessKey' field"
-    elif [ ${#aws_session_token} = 0 ]; then
-        err "Failed to read a value for the required 'SessionToken' field"
-    else 
-        export AWS_ACCESS_KEY_ID=$aws_access_key_id
-        export AWS_SECRET_ACCESS_KEY=$aws_secret_access_key
-        export AWS_SESSION_TOKEN=$aws_session_token
-
-        rm /tmp/assume_role.json
-    fi
-
-    echo "...done"
-
-    echo ""
-    echo "Successfully authenticated."
-    echo "AWS_ACCESS_KEY_ID: " $AWS_ACCESS_KEY_ID
-    echo "AWS_SECRET_ACCESS_KEY: " $AWS_SECRET_ACCESS_KEY
-    echo "AWS_SESSION_TOKEN: " $AWS_SESSION_TOKEN
     echo ""
 
     return 0
 fi
-
