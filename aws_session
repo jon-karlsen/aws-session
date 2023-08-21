@@ -97,19 +97,16 @@ function read_credentials {
 #       None
 #######################################
 function verify_credentials {
-    if   [ ${#aws_access_key_id} = 0 ];     then
-        err "Failed to read a value for the required 'aws_access_key_id' configuration option"
-    elif [ ${#aws_secret_access_key} = 0 ]; then
-        err "Failed to read a value for the required 'aws_secret_access_key' configuraton option"
-    elif [ ${#mfa_serial} = 0 ];            then
-        err "Failed to read a value for the required 'mfa_serial' configuration option"
+    if   [ ${#aws_access_key_id}     = 0 ]; then err "Failed to read a value for the required 'aws_access_key_id' configuration option"
+    elif [ ${#aws_secret_access_key} = 0 ]; then err "Failed to read a value for the required 'aws_secret_access_key' configuraton option"
+    elif [ ${#mfa_serial}            = 0 ]; then err "Failed to read a value for the required 'mfa_serial' configuration option"
     fi
 }
 
 
     token=""
 echo_vars=false
-conf_file="~/.aws/credentials"
+conf_file="~/.aws/config"
 
 
 for i in "$@"; do
@@ -137,7 +134,7 @@ else
     echo ""
 
     prep
-    read_credentials ~/.aws/credentials
+    read_credentials ~/.aws/config
     verify_credentials
     
     echo ""
@@ -159,12 +156,9 @@ else
     aws_secret_access_key=$( cat "/tmp/session_token.json" | jq -r '.Credentials.SecretAccessKey' )
         aws_session_token=$( cat "/tmp/session_token.json" | jq -r '.Credentials.SessionToken' )
 
-    if [ ${#aws_access_key_id} = 0 ];       then
-        err "Failed to read a value for the required 'AccessKeyId' field"
-    elif [ ${#aws_secret_access_key} = 0 ]; then
-        err "Failed to read a value for the required 'SecretAccessKey' field"
-    elif [ ${#aws_session_token} = 0 ];     then
-        err "Failed to read a value for the required 'SessionToken' field"
+    if   [ ${#aws_access_key_id}     = 0 ]; then err "Failed to read a value for the required 'AccessKeyId' field"
+    elif [ ${#aws_secret_access_key} = 0 ]; then err "Failed to read a value for the required 'SecretAccessKey' field"
+    elif [ ${#aws_session_token}     = 0 ]; then err "Failed to read a value for the required 'SessionToken' field"
     else 
           tmp_file=$(mktemp)
         in_section=""
@@ -172,33 +166,28 @@ else
         while read -r line;
         do
             if [[ "$line" =~ (\[[a-z]+\]) ]]; then
-                if [[ "${match[1]}" == "[mfa]" ]]; then 
-                    in_section="1"
-                else 
-                    in_section=""
+                if [[ "${match[1]}" == "[mfa]" ]]; then in_section="1"
+                else                                    in_section=""
                 fi
             fi
 
             if [[ "$in_section" == "1" ]];
             then 
-                if [[ "$line" =~ ^aws_access_key_id ]]; then 
-                    line="aws_access_key_id = $aws_access_key_id"
+                if [[ "$line" =~ ^aws_access_key_id ]]; then line="aws_access_key_id    = $aws_access_key_id"
                 fi
 
-                if [[ "$line" =~ ^aws_secret_access_key ]]; then 
-                    line="aws_secret_access_key = $aws_secret_access_key"
+                if [[ "$line" =~ ^aws_secret_access_key ]]; then line="aws_secret_access_key = $aws_secret_access_key"
                 fi
 
-                if [[ "$line" =~ ^aws_session_token ]]; then 
-                    line="aws_session_token = $aws_session_token"
+                if [[ "$line" =~ ^aws_session_token ]]; then line="aws_session_token    = $aws_session_token"
                 fi
             fi
 
             echo "$line" >> "$tmp_file"
 
-        done < ~/.aws/credentials
+        done < ~/.aws/config
 
-        mv "$tmp_file" ~/.aws/credentials
+        mv "$tmp_file" ~/.aws/config
 
         if [ "$echo_vars" = true ]; then
             echo "AWS_ACCESS_KEY_ID: "     $aws_access_key_id
