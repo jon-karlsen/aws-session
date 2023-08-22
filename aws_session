@@ -165,21 +165,22 @@ else
 
         while read -r line;
         do
-            if [[ "$line" =~ (\[[a-z]+\]) ]]; then
-                if [[ "${match[1]}" == "[mfa]" ]]; then in_section="1"
-                else                                    in_section=""
+            if [[ "$line" =~ (\[[a-z ]+\]) ]]; then
+                if [[ "${match[1]}" == "[profile mfa]" ]]; 
+                    then in_section="1"
+                    else in_section=""
                 fi
             fi
 
             if [[ "$in_section" == "1" ]];
             then 
-                if [[ "$line" =~ ^aws_access_key_id ]]; then line="aws_access_key_id    = $aws_access_key_id"
+                if [[ "$line" =~ ^aws_access_key_id ]];     then line="aws_access_key_id    = $aws_access_key_id"
                 fi
 
                 if [[ "$line" =~ ^aws_secret_access_key ]]; then line="aws_secret_access_key = $aws_secret_access_key"
                 fi
 
-                if [[ "$line" =~ ^aws_session_token ]]; then line="aws_session_token    = $aws_session_token"
+                if [[ "$line" =~ ^aws_session_token ]];     then line="aws_session_token    = $aws_session_token"
                 fi
             fi
 
