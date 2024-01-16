@@ -106,7 +106,7 @@ function verify_credentials {
 
     token=""
 echo_vars=false
-conf_file="~/.aws/config"
+conf_file="~/.aws/credentials"
 
 
 for i in "$@"; do
@@ -134,7 +134,7 @@ else
     echo ""
 
     prep
-    read_credentials ~/.aws/config
+    read_credentials ~/.aws/credentials
     verify_credentials
     
     echo ""
@@ -166,7 +166,7 @@ else
         while read -r line;
         do
             if [[ "$line" =~ (\[[a-z ]+\]) ]]; then
-                if [[ "${match[1]}" == "[profile mfa]" ]]; 
+                if [[ "${match[1]}" == "[mfa]" ]]; 
                     then in_section="1"
                     else in_section=""
                 fi
@@ -186,9 +186,9 @@ else
 
             echo "$line" >> "$tmp_file"
 
-        done < ~/.aws/config
+        done < ~/.aws/credentials
 
-        mv "$tmp_file" ~/.aws/config
+        mv "$tmp_file" ~/.aws/credentials
 
         if [ "$echo_vars" = true ]; then
             echo "AWS_ACCESS_KEY_ID: "     $aws_access_key_id
